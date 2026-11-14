@@ -33,7 +33,7 @@ function renderList(ul, items) {
     const b = document.createElement('button');
     b.textContent = it.title;
     const s = document.createElement('small');
-    s.textContent = it.source || '';
+    s.textContent = it.artist || it.source || '';
     b.append(s);
     b.onclick = () => openSong(it.url);
     li.append(b);
@@ -73,7 +73,7 @@ let last = 0, acc = 0, wakeLock = null;
 
 function showPlayer(song) {
   $('songTitle').textContent = song.title;
-  $('songSource').textContent = song.source || '';
+  $('songSource').textContent = song.artist || song.source || '';
   const root = $('song');
   root.innerHTML = '';
   for (const l of song.lines) {
