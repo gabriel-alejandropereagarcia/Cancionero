@@ -1,6 +1,7 @@
 const $ = (id) => document.getElementById(id);
 const RECENTS_KEY = 'cancionero.recents';
 const SPEED_KEY = 'cancionero.speed';
+const FONT_KEY = 'cancionero.font';
 
 // ---------- Búsqueda ----------
 let searchToken = 0; // descarta respuestas viejas si el usuario busca de nuevo
@@ -133,7 +134,20 @@ function fitFont() {
   probe.remove();
   if (!charW) return;
   const avail = root.clientWidth - 32;
-  root.style.fontSize = `${Math.max(12, Math.min(30, Math.floor((20 * avail) / (maxLen * charW))))}px`;
+  const auto = Math.max(12, Math.min(30, Math.floor((20 * avail) / (maxLen * charW))));
+  root.style.fontSize = `${manualFont || auto}px`;   // si el cantor eligió un tamaño con A−/A+, ese manda
+}
+
+// A− / A+: tamaño elegido a mano (se recuerda). Mantiene el lugar de la canción donde estabas.
+let manualFont = Number(localStorage.getItem(FONT_KEY)) || 0;
+function changeFont(delta) {
+  const root = $('song');
+  const ratio = window.scrollY / Math.max(1, document.documentElement.scrollHeight);
+  const cur = parseFloat(getComputedStyle(root).fontSize);
+  manualFont = Math.min(40, Math.max(10, Math.round(cur + delta)));
+  try { localStorage.setItem(FONT_KEY, manualFont); } catch {}
+  root.style.fontSize = `${manualFont}px`;
+  window.scrollTo(0, ratio * document.documentElement.scrollHeight);
 }
 window.addEventListener('resize', () => { if (!$('player').hidden) fitFont(); });
 
@@ -184,6 +198,8 @@ $('play').onclick = () => (playing ? pause() : play());
 $('song').onclick = () => (playing ? pause() : play());   // tocar la letra también pausa/sigue
 $('slower').onclick = () => setSpeed(speed - 5);
 $('faster').onclick = () => setSpeed(speed + 5);
+$('fontDown').onclick = () => changeFont(-2);
+$('fontUp').onclick = () => changeFont(2);
 $('back').onclick = () => history.back();
 window.addEventListener('popstate', () => { if (!$('player').hidden) closePlayer(); });
 // Si el usuario arrastra con el dedo, no acumular movimiento pendiente

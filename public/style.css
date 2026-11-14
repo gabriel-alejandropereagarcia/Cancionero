@@ -30,3 +30,6 @@ button { padding: 14px 18px; background: var(--accent); color: #04210f; font-wei
 #controls button { width: 56px; height: 56px; padding: 0; font-size: 1.6rem; background: var(--card); color: var(--fg); }
 #controls #play { width: 72px; height: 72px; background: var(--accent); color: #04210f; }
 #speedLabel { min-width: 52px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+#player header .fontbtns { margin-left: auto; display: flex; gap: 8px; flex: none; }
+#player header .fontbtns button { min-width: 48px; height: 44px; padding: 0 10px; font-weight: 700; }

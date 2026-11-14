@@ -99,6 +99,27 @@ try:
         check('play al final reinicia desde arriba', page.evaluate('scrollY') < page.evaluate('document.documentElement.scrollHeight') - 900 and page.inner_text('#play') == '⏸')
         page.click('#play')
 
+        # tamaño de letra manual
+        page.evaluate('scrollTo(0, 600)')
+        fs0 = page.evaluate("parseFloat(getComputedStyle(document.getElementById('song')).fontSize)")
+        ratio0 = page.evaluate('scrollY / document.documentElement.scrollHeight')
+        page.click('#fontUp'); page.click('#fontUp')
+        fs1 = page.evaluate("parseFloat(getComputedStyle(document.getElementById('song')).fontSize)")
+        ratio1 = page.evaluate('scrollY / document.documentElement.scrollHeight')
+        check('A+ agranda la letra', fs1 == fs0 + 4, f'{fs0} → {fs1}')
+        check('A+ mantiene el lugar en la canción', abs(ratio1 - ratio0) < 0.02, f'{ratio0:.3f} → {ratio1:.3f}')
+        check('A+ queda guardado', page.evaluate("localStorage.getItem('cancionero.font')") == str(int(fs1)))
+        for _ in range(30): page.click('#fontDown')
+        fs2 = page.evaluate("parseFloat(getComputedStyle(document.getElementById('song')).fontSize)")
+        check('A− tiene piso (10px)', fs2 == 10, str(fs2))
+        for _ in range(30): page.click('#fontUp')
+        fs3 = page.evaluate("parseFloat(getComputedStyle(document.getElementById('song')).fontSize)")
+        check('A+ tiene techo (40px)', fs3 == 40, str(fs3))
+        m = page.evaluate("() => { const s = document.getElementById('song'); return s.scrollWidth <= s.clientWidth + 1 && document.documentElement.scrollWidth <= innerWidth + 1; }")
+        check('letra gigante: sin scroll lateral', m)
+        for _ in range(8): page.click('#fontDown')
+        page.evaluate("localStorage.removeItem('cancionero.font')")
+
         # velocidad persiste y "atrás"
         saved = page.evaluate("localStorage.getItem('cancionero.speed')")
         check('velocidad guardada', saved is not None)
