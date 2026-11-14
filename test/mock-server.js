@@ -52,4 +52,4 @@ globalThis.fetch = async (input, init) => {
   return realFetch(input, init); // el navegador/tests hablan con el servidor local de verdad
 };
 
-await import('../server.js');
+await import('../dev-server.js');
