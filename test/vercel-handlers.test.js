@@ -6,7 +6,7 @@ import { resolve } from 'node:path';
 process.env.PORT = '0';
 // Reusa el simulador, pero sin levantar el servidor local
 const src = await (await import('node:fs/promises')).readFile('test/mock-server.js', 'utf8');
-const mockOnly = src.replace("await import('../dev-server.js');", '');
+const mockOnly = src.replace("await import('../server.js');", '');
 await import('data:text/javascript;base64,' + Buffer.from(mockOnly).toString('base64'));
 
 const call = async (file, query) => {

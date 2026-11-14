@@ -33,6 +33,12 @@ http
         const r = await fetchArtist(url.searchParams.get('slug') || '', (url.searchParams.get('name') || '').slice(0, 80));
         return json(res, 200, { results: r });
       }
+      if (url.pathname === '/api/debug') {   // diagnóstico temporal
+        const h = (await import('./api/debug.js')).default;
+        let code = 200;
+        const shim = { setHeader() {}, status(c) { code = c; return this; }, json(b) { json(res, code, b); } };
+        return h({ query: Object.fromEntries(url.searchParams) }, shim);
+      }
       if (url.pathname === '/api/song') {
         return json(res, 200, await fetchSong(url.searchParams.get('url') || ''));
       }
