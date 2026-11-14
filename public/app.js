@@ -3,26 +3,36 @@ const RECENTS_KEY = 'cancionero.recents';
 const SPEED_KEY = 'cancionero.speed';
 
 // ---------- Búsqueda ----------
+let searchToken = 0; // descarta respuestas viejas si el usuario busca de nuevo
+
 $('search').addEventListener('submit', async (e) => {
   e.preventDefault();
   const q = $('q').value.trim();
+  if (q.length < 2) return setStatus('Escribí al menos 2 letras');
+  const token = ++searchToken;
   $('results').innerHTML = '';
   setStatus('Buscando…');
   try {
     const r = await api(`/api/search?q=${encodeURIComponent(q)}`);
-    setStatus(r.results.length ? '' : 'Sin resultados. Probá con artista + título.');
+    if (token !== searchToken) return;
+    setStatus(r.results.length ? '' : 'Sin resultados. Probá con otro título o con el artista.');
     renderList($('results'), r.results);
   } catch (err) {
-    setStatus(err.message);
+    if (token === searchToken) setStatus(err.message);
   }
 });
 
 function setStatus(t) { $('status').textContent = t; }
 
 async function api(path) {
-  const res = await fetch(path);
+  let res;
+  try {
+    res = await fetch(path);
+  } catch {
+    throw new Error('Sin conexión');
+  }
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || 'Error de conexión');
+  if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
   return data;
 }
 
@@ -31,6 +41,7 @@ function renderList(ul, items) {
   for (const it of items) {
     const li = document.createElement('li');
     const b = document.createElement('button');
+    b.type = 'button';
     b.textContent = it.title;
     const s = document.createElement('small');
     s.textContent = it.artist || it.source || '';
@@ -42,14 +53,16 @@ function renderList(ul, items) {
 }
 
 async function openArtist(a) {
+  const token = ++searchToken;
   setStatus(`Cargando canciones de ${a.title}…`);
   try {
     const r = await api(`/api/artist?slug=${encodeURIComponent(a.slug)}&name=${encodeURIComponent(a.title)}`);
+    if (token !== searchToken) return;
     setStatus(`Más populares de ${a.title}`);
     renderList($('results'), r.results);
     window.scrollTo(0, 0);
   } catch (err) {
-    setStatus(err.message);
+    if (token === searchToken) setStatus(err.message);
   }
 }
 
@@ -69,21 +82,26 @@ function showRecents() {
 async function openSong(url) {
   setStatus('Cargando canción…');
   let song = getRecents().find((s) => s.url === url);
+  let failure = null;
   try {
     song = await api(`/api/song?url=${encodeURIComponent(url)}`);
     saveRecent(song);
   } catch (err) {
-    if (!song) return setStatus(err.message);   // sin red y sin copia local
+    failure = err;
   }
+  if (!song) return setStatus(failure.message);   // sin red y sin copia guardada
   setStatus('');
+  history.pushState({ player: true }, '');          // el botón "atrás" del celu vuelve a la lista
   showPlayer(song);
 }
 
 // ---------- Teleprompter ----------
-let playing = false, speed = Number(localStorage.getItem(SPEED_KEY)) || 40; // px/seg
-let last = 0, acc = 0, wakeLock = null;
+let playing = false;
+let speed = Number(localStorage.getItem(SPEED_KEY)) || 40; // px por segundo
+let last = 0, acc = 0, wakeLock = null, currentSong = null;
 
 function showPlayer(song) {
+  currentSong = song;
   $('songTitle').textContent = song.title;
   $('songSource').textContent = song.artist || song.source || '';
   const root = $('song');
@@ -96,9 +114,28 @@ function showPlayer(song) {
   }
   $('home').hidden = true;
   $('player').hidden = false;
+  fitFont();
   window.scrollTo(0, 0);
   updateSpeed();
 }
+
+// Ajusta el tamaño de letra para que la línea más larga entre en pantalla (sin scroll horizontal).
+function fitFont() {
+  if (!currentSong) return;
+  const root = $('song');
+  const maxLen = Math.max(10, ...currentSong.lines.map((l) => l.text.length));
+  root.style.fontSize = '20px';
+  const probe = document.createElement('span');
+  probe.textContent = '0'.repeat(40);
+  probe.style.cssText = 'position:absolute;visibility:hidden;white-space:pre';
+  root.append(probe);
+  const charW = probe.getBoundingClientRect().width / 40;
+  probe.remove();
+  if (!charW) return;
+  const avail = root.clientWidth - 32;
+  root.style.fontSize = `${Math.max(12, Math.min(30, Math.floor((20 * avail) / (maxLen * charW))))}px`;
+}
+window.addEventListener('resize', () => { if (!$('player').hidden) fitFont(); });
 
 function closePlayer() {
   pause();
@@ -113,9 +150,13 @@ function setSpeed(v) {
   updateSpeed();
 }
 
+const atEnd = () => window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
+
 async function play() {
+  if (atEnd()) window.scrollTo(0, 0);               // si ya terminó, arranca de nuevo desde arriba
   playing = true;
   $('play').textContent = '⏸';
+  $('play').setAttribute('aria-label', 'Pausar');
   last = performance.now();
   acc = 0;
   requestAnimationFrame(tick);
@@ -124,17 +165,18 @@ async function play() {
 function pause() {
   playing = false;
   $('play').textContent = '▶';
+  $('play').setAttribute('aria-label', 'Reproducir');
   wakeLock?.release?.().catch?.(() => {});
   wakeLock = null;
 }
 function tick(now) {
   if (!playing) return;
-  acc += speed * ((now - last) / 1000);
+  const dt = Math.min((now - last) / 1000, 0.1);    // un salto de tiempo (pestaña en segundo plano) no pega un salto de scroll
   last = now;
+  acc += speed * dt;
   const step = Math.floor(acc);
   if (step >= 1) { window.scrollBy(0, step); acc -= step; }
-  const atEnd = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
-  if (atEnd) return pause();
+  if (atEnd()) return pause();
   requestAnimationFrame(tick);
 }
 
@@ -142,14 +184,16 @@ $('play').onclick = () => (playing ? pause() : play());
 $('song').onclick = () => (playing ? pause() : play());   // tocar la letra también pausa/sigue
 $('slower').onclick = () => setSpeed(speed - 5);
 $('faster').onclick = () => setSpeed(speed + 5);
-$('back').onclick = closePlayer;
-// Si el usuario arrastra con el dedo, no pelear con el scroll automático
+$('back').onclick = () => history.back();
+window.addEventListener('popstate', () => { if (!$('player').hidden) closePlayer(); });
+// Si el usuario arrastra con el dedo, no acumular movimiento pendiente
 window.addEventListener('touchstart', () => { acc = 0; last = performance.now(); }, { passive: true });
 document.addEventListener('visibilitychange', async () => {
   if (playing && document.visibilityState === 'visible') {
+    last = performance.now();
     try { wakeLock = await navigator.wakeLock?.request('screen'); } catch {}
   }
 });
 
 showRecents();
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});

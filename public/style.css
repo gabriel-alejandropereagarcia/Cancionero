@@ -20,8 +20,8 @@ button { padding: 14px 18px; background: var(--accent); color: #04210f; font-wei
 #player header strong, #player header small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #player header small { color: var(--muted); }
 
-#song { padding: 16px; font-family: ui-monospace, "Cascadia Mono", Menlo, monospace; font-size: clamp(17px, 5vw, 26px); line-height: 1.45; overflow-x: auto; }
-#song div { white-space: pre; min-height: 1.45em; }
+#song { padding: 16px; font-family: ui-monospace, "Cascadia Mono", Menlo, monospace; font-size: 20px; line-height: 1.45; }
+#song div { white-space: pre-wrap; overflow-wrap: anywhere; min-height: 1.45em; }
 #song .chord { color: var(--chord); font-weight: 700; }
 #song .section { color: var(--accent); font-weight: 700; margin-top: .6em; }
 .spacer { height: 70vh; }  /* deja que la última línea llegue al centro de la pantalla */

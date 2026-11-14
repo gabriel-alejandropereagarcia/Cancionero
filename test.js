@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { parseSongHtml, parseSearchJson, parseArtistHtml, isChordLine, isTabLine } from './lib/sources.js';
+import { parseSongHtml, parseSearchJson, parseArtistHtml, isChordLine, isTabLine, classify } from './lib/sources.js';
 
 // Acordes reales de Cifra Club (formas raras incluidas)
 for (const l of ['Am  G  F  E', 'C#m7 F#sus4/A#', 'D°  F°  G#°', 'Am9/G   Am', 'G7(9)  C7M  F7M', 'Dm7(9)  E7  Am  Am/G', '( Am  Am/G  Am/F )', '| Am | G |', 'Am x2', '​    Dm7  E7'.replace('​', '')])
@@ -9,6 +9,11 @@ for (const l of ['Siempre que te miro', 'A veces me pregunto', 'Dime que sí', '
 assert.ok(isTabLine('E|-0-0-0-1-----1-------4---------| '));
 assert.ok(isTabLine('G|-------------1-----1-----|'));
 assert.ok(!isTabLine('Ese hombre | que canta'));
+
+// Secciones: solo encabezados reales; la letra que empieza con esas palabras sigue siendo letra
+const kind = (l) => classify(l)[0].t;
+for (const l of ['Intro', 'Estribillo:', 'Coro 2', '[Solo]', 'Puente (x2)', '[Primera Parte]', 'Instrumental']) assert.equal(kind(l), 'section', l);
+for (const l of ['Solo quiero cantar', 'Final de la historia', 'Coro de ángeles', 'Verso a verso', 'Solo vi', 'Es la vida']) assert.equal(kind(l), 'lyric', l);
 
 // Estructura imitando la página real: <pre> con divs/spans/<b>, ZWSP, tablaturas y secciones
 const Z = '​';
