@@ -35,9 +35,21 @@ function renderList(ul, items) {
     const s = document.createElement('small');
     s.textContent = it.artist || it.source || '';
     b.append(s);
-    b.onclick = () => openSong(it.url);
+    b.onclick = () => (it.kind === 'artist' ? openArtist(it) : openSong(it.url));
     li.append(b);
     ul.append(li);
+  }
+}
+
+async function openArtist(a) {
+  setStatus(`Cargando canciones de ${a.title}…`);
+  try {
+    const r = await api(`/api/artist?slug=${encodeURIComponent(a.slug)}&name=${encodeURIComponent(a.title)}`);
+    setStatus(`Más populares de ${a.title}`);
+    renderList($('results'), r.results);
+    window.scrollTo(0, 0);
+  } catch (err) {
+    setStatus(err.message);
   }
 }
 

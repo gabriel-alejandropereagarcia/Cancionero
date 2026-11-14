@@ -2,7 +2,7 @@ import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { searchSongs, fetchSong } from './lib/sources.js';
+import { searchSongs, fetchSong, fetchArtist } from './lib/sources.js';
 
 const PUBLIC = join(fileURLToPath(new URL('.', import.meta.url)), 'public');
 const PORT = process.env.PORT || 3000;
@@ -28,6 +28,10 @@ http
         const q = (url.searchParams.get('q') || '').trim().slice(0, 120);
         if (q.length < 2) return json(res, 400, { error: 'Escribí al menos 2 letras' });
         return json(res, 200, { results: await searchSongs(q) });
+      }
+      if (url.pathname === '/api/artist') {
+        const r = await fetchArtist(url.searchParams.get('slug') || '', (url.searchParams.get('name') || '').slice(0, 80));
+        return json(res, 200, { results: r });
       }
       if (url.pathname === '/api/song') {
         return json(res, 200, await fetchSong(url.searchParams.get('url') || ''));

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { parseSongHtml, parseSearchJson, isChordLine, isTabLine } from './lib/sources.js';
+import { parseSongHtml, parseSearchJson, parseArtistHtml, isChordLine, isTabLine } from './lib/sources.js';
 
 // Acordes reales de Cifra Club (formas raras incluidas)
 for (const l of ['Am  G  F  E', 'C#m7 F#sus4/A#', 'D°  F°  G#°', 'Am9/G   Am', 'G7(9)  C7M  F7M', 'Dm7(9)  E7  Am  Am/G', '( Am  Am/G  Am/F )', '| Am | G |', 'Am x2', '​    Dm7  E7'.replace('​', '')])
@@ -28,13 +28,28 @@ assert.ok(!s.lines.some((l) => /\|/.test(l.text) && l.t !== 'chord'), 'sin tabla
 assert.ok(s.lines.every((l) => !l.text.includes(Z)));
 assert.ok(s.lines.find((l) => l.t === 'lyric').text.includes('& dos'));
 
-// Respuesta del buscador de Cifra Club
+// Respuesta del buscador de Cifra Club: artistas y canciones; descarta álbumes
 const r = parseSearchJson({
   results: [
-    { type: 'song', name: 'Gracias a La Vida', slug: 'gracias-la-vida', artist: { name: 'Mercedes Sosa', slug: 'mercedes-sosa' } },
-    { type: 'artist', name: 'Mercedes Sosa', slug: 'mercedes-sosa' },
+    { type: 'artist', name: 'Banda Demo', slug: 'banda-demo', song_count: 120 },
+    { type: 'album', name: 'Disco', slug: 'disco' },
+    { type: 'song', name: 'Tema Uno', slug: 'tema-uno', artist: { name: 'Banda Demo', slug: 'banda-demo' } },
     { type: 'song', name: 'Sin artista', slug: 'x' },
   ],
 });
-assert.deepEqual(r, [{ title: 'Gracias a La Vida', artist: 'Mercedes Sosa', url: 'https://www.cifraclub.com/mercedes-sosa/gracias-la-vida/', source: 'Cifra Club' }]);
+assert.deepEqual(r, [
+  { kind: 'artist', title: 'Banda Demo', artist: 'Artista · 120 canciones', slug: 'banda-demo' },
+  { kind: 'song', title: 'Tema Uno', artist: 'Banda Demo', url: 'https://www.cifraclub.com/banda-demo/tema-uno/', source: 'Cifra Club' },
+]);
+
+// Página de artista: <a> con [posición, título, visitas, tono, Opciones] y botón; clases ofuscadas
+const artistHtml = `
+<a href="/banda-demo/"><div>menu</div></a>
+<a href="/banda-demo/tema-uno/" class="zZ"><div class="a"><p class="x">01</p><div><p class="y">Tema Uno</p></div></div><span>3821</span><span>Bm</span><button><span>Opciones</span></button></a>
+<a href="/banda-demo/tema-dos-123/" class="zZ"><div><p>02</p><div><p>Tema &amp; Dos</p></div></div><span>1704</span><span>D</span><button><span>Opciones</span></button></a>
+<a href="/banda-demo/tema-uno/"><p>01</p><p>Tema Uno</p><button>x</button></a>
+<a href="/banda-demo/fotos/">Fotos</a>`;
+const al = parseArtistHtml(artistHtml, 'banda-demo', 'Banda Demo');
+assert.deepEqual(al.map((x) => x.title), ['Tema Uno', 'Tema & Dos']);
+assert.equal(al[1].url, 'https://www.cifraclub.com/banda-demo/tema-dos-123/');
 console.log('OK');
