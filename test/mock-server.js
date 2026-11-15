@@ -42,14 +42,23 @@ globalThis.fetch = async (input, init) => {
         : [song, { type: 'song', name: 'Otro Tema', slug: 'otro-tema', artist: { name: 'Otra Banda', slug: 'otra-banda' } }, { type: 'album', name: 'Disco', slug: 'disco' }],
     });
   }
-  if (url.hostname === 'www.cifraclub.com') {
+  if (url.hostname === 'r.jina.ai') {            // el lector devuelve el mismo HTML desde su red
+    if (globalThis.__JINA_DOWN) return html('error', 500);
+    return globalThis.fetchPage(new URL(url.pathname.slice(1) + url.search), true);
+  }
+  if (url.hostname === 'www.cifraclub.com') return globalThis.fetchPage(url, false);
+  return realFetch(input, init); // el navegador/tests hablan con el servidor local de verdad
+};
+
+globalThis.fetchPage = async (url, viaProxy) => {
+  {
+    if (globalThis.__BLOCK && !viaProxy) return html('<HTML><TITLE>Access Denied</TITLE></HTML>', 403);
     if (url.pathname === '/banda-demo/') return html(artistHtml);
     if (url.pathname === '/banda-demo/tema-uno/') return html(songHtml());
     if (url.pathname === '/banda-demo/extremo/') return html(extremeHtml());
     if (url.pathname === '/banda-demo/sin-pre/') return html('<html><body>nada</body></html>');
     return html('404', 404);
   }
-  return realFetch(input, init); // el navegador/tests hablan con el servidor local de verdad
 };
 
 await import('../server.js');

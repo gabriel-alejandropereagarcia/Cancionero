@@ -48,5 +48,27 @@ assert.equal(r.body.results.length, 3);
 r = await call('artist.js', { slug: '../x' });
 assert.equal(r.code, 502);
 
+// Cifra Club bloquea a Vercel con 403 → debe usar el lector alternativo
+globalThis.__BLOCK = true;
+r = await call('song.js', { url: 'https://www.cifraclub.com/banda-demo/tema-uno/' });
+assert.equal(r.code, 200, JSON.stringify(r.body));
+assert.equal(r.body.title, 'Tema Uno');
+assert.ok(r.body.lines.some((l) => l.t === 'chord'));
+r = await call('artist.js', { slug: 'banda-demo', name: 'Banda Demo' });
+assert.equal(r.code, 200, JSON.stringify(r.body));
+assert.equal(r.body.results.length, 3);
+
+// Bloqueado y el lector también caído → error claro y sin caché
+globalThis.__JINA_DOWN = true;
+r = await call('song.js', { url: 'https://www.cifraclub.com/banda-demo/tema-uno/' });
+assert.equal(r.code, 502);
+assert.match(r.body.error, /bloque/);
+assert.equal(r.headers['Cache-Control'], undefined);
+// un 404 normal NO debe ir al lector
+globalThis.__BLOCK = false; globalThis.__JINA_DOWN = false;
+r = await call('song.js', { url: 'https://www.cifraclub.com/no/existe/' });
+assert.equal(r.code, 502);
+assert.match(r.body.error, /404/);
+
 console.log('Handlers de Vercel: OK');
 process.exit(0);
